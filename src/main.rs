@@ -13,7 +13,7 @@ fn main() {
             match context.devices() {
                 Ok(devices) => {
                     for device in devices.iter() {
-                        prope_device(device)
+                        probe_device(device)
                     }
                 }
                 Err(e) => {println!("Error {}", e)}
@@ -23,16 +23,16 @@ fn main() {
     }
 }
 
-fn prope_device(device: Device) {
+fn probe_device(device: Device) {
     match device.open() {
         Ok(handle) => {
-            println!("{:?}", read(handle));
+            println!("{:?}", probe(handle));
         }
         Err(e) => {println!("Error {}", e)}
     }
 }
 
-fn read(handle: DeviceHandle) -> Result<usize, Error> {
+fn probe(handle: DeviceHandle) -> Result<usize, Error> {
     let mut buffer: [u8;2] = [0,2];
     let read_request = request_type(Direction::In, RequestType::Vendor, Recipient::Device);
     let write_request = request_type(Direction::Out, RequestType::Vendor, Recipient::Device);
