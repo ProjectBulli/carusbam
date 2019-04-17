@@ -1,7 +1,7 @@
 [package]
 name = "carusbam"
 version = "0.1.0"
-authors = ["Bernd Dutkowski <bernd@dutkowski.net>"]
+authors = ["nexos"]
 edition = "2018"
 
 [build]
