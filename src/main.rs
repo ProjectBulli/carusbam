@@ -28,12 +28,14 @@ fn main() -> Result<(), Error> {
     for device in context.devices().map_err(Error::USB)?.iter() {
         let bus = device.bus_number();
         let address = device.address();
-        match probe_device(device) {
-            Ok(version) => {
-                println!("   ok {}:{} version {}", bus, address, version)
-            }
-            Err(e) => {
-                println!("error {}:{} {:?}", bus, address, e)
+        if bus == *bus_number && *device_number == address {
+            match probe_device(device) {
+                Ok(version) => {
+                    println!("   ok {}:{} version {}", bus, address, version)
+                }
+                Err(e) => {
+                    println!("error {}:{} {:?}", bus, address, e)
+                }
             }
         }
     }
