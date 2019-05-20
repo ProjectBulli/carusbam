@@ -1,1 +1,0 @@
-ACTION=="add", SUBSYSTEM=="usb", DRIVERS=="usb", ATTRS{bDeviceClass}=="ff", ATTR{bDeviceSubClass}=="ff", RUN+="carusbam $attr{busnum} $attr{devnum}"

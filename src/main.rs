@@ -19,12 +19,18 @@ enum Error {
 
 fn main() -> Result<(), Error> {
     let args: Vec<String> = env::args().collect();
+    let result = internal(args);
+    println!("{:?}", result);
+    result
+}
+
+fn internal(args: Vec<String>) -> Result<(), Error> {
     if args.len() <= 2 {
         return Err(Error::Args(args))
     }
     let bus_number = &args[1].parse::<u8>().map_err(Error::Parse)?;
-    let device_number = &args[2].parse::<u8>().map_err( Error::Parse)?;
-    let context = Context::new().map_err( Error::USB)?;
+    let device_number = &args[2].parse::<u8>().map_err(Error::Parse)?;
+    let context = Context::new().map_err(Error::USB)?;
     for device in context.devices().map_err(Error::USB)?.iter() {
         let bus = device.bus_number();
         let address = device.address();

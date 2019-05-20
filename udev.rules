@@ -1,0 +1,1 @@
+ACTION=="add", SUBSYSTEM=="usb", DRIVERS=="usb", RUN+="/usr/bin/carusbam $attr{busnum} $attr{devnum}"

@@ -3,9 +3,8 @@ name = "carusbam"
 version = "0.1.0"
 authors = ["nexos"]
 edition = "2018"
-
-[build]
-target="x86_64-unknown-linux-musl"
+readme = "README.md"
+description = "Car USB Accessory Mode"
 
 [dependencies]
 libusb = "0.3.0"
@@ -15,3 +14,14 @@ lto = true
 panic = 'abort'
 debug = false
 debug-assertions = false
+
+[package.metadata.deb]
+depends = "udev"
+extended-description = """\
+car aa
+"""
+assets = [
+    ["target/x86_64-unknown-linux-musl/release/carusbam", "usr/bin/carusbam", "755"],
+    ["udev.rules", "/lib/udev/rules.d/99-carusbam.rules", "644"],
+    ["README.md", "usr/share/doc/carusbam/README.md", "755"]
+]
