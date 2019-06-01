@@ -2,8 +2,10 @@ extern crate libusb;
 
 use std::time::Duration;
 use libusb::{Context, Device, Direction, Recipient, request_type, RequestType};
+use libusb::Error as USBError;
 use std::env;
 use std::num::ParseIntError;
+use std::process::exit;
 
 const GET_PROTOCOL: u8 = 51;
 const SEND_STRING: u8 = 52;
@@ -11,17 +13,57 @@ const REQUEST_START: u8 = 53;
 
 #[derive(Debug)]
 enum Error {
-    USB(libusb::Error),
+    USB(USBError),
     Parse(ParseIntError),
     Args(Vec<String>),
     UnsupportedVersion(u16)
 }
 
-fn main() -> Result<(), Error> {
+fn main() -> Result<(), ()> {
     let args: Vec<String> = env::args().collect();
-    let result = internal(args);
-    println!("{:?}", result);
-    result
+    let (exit_code, message) = match internal(args) {
+        Ok(())
+            => (0, ""),
+        Err(Error::USB(USBError::Success))
+            => ( 100, USBError::Success.strerror()),
+        Err(Error::USB(USBError::Io))
+            => (-101, USBError::Io.strerror()),
+        Err(Error::USB(USBError::InvalidParam))
+            => (-102, USBError::InvalidParam.strerror()),
+        Err(Error::USB(USBError::Access))
+            => (-103, USBError::Access.strerror()),
+        Err(Error::USB(USBError::NoDevice))
+            => (-104, USBError::NoDevice.strerror()),
+        Err(Error::USB(USBError::NotFound))
+            => (-105, USBError::NotFound.strerror()),
+        Err(Error::USB(USBError::Busy))
+            => (-106, USBError::Busy.strerror()),
+        Err(Error::USB(USBError::Timeout))
+            => (-107, USBError::Timeout.strerror()),
+        Err(Error::USB(USBError::Overflow))
+            => (-108, USBError::Overflow.strerror()),
+        Err(Error::USB(USBError::Pipe))
+            => (-109, USBError::Pipe.strerror()),
+        Err(Error::USB(USBError::Interrupted))
+            => (-110, USBError::Interrupted.strerror()),
+        Err(Error::USB(USBError::NoMem))
+            => (-111, USBError::NoMem.strerror()),
+        Err(Error::USB(USBError::NotSupported))
+            => (-112, USBError::NotSupported.strerror()),
+        Err(Error::USB(USBError::Other))
+            => (-113, USBError::Other.strerror()),
+        Err(Error::Parse(_))
+            //=> (-200, format!("Parse Error: {}", p).as_str()),
+            => (-200, "Parse Error: {}"),
+        Err(Error::Args(_args))
+            //=> (-300, format!("trouble with arguments, need two arguments: bus-number and device-number but got '{:?}'", args).as_str()),
+            => (-300, "trouble with arguments, need two arguments: bus-number and device-number"),
+        Err(Error::UnsupportedVersion(_version))
+            //=> (-400, format!("Unsupported android auto version {} found", version).as_str()),
+            => (-400, "Unsupported android auto version found"),
+    };
+    println!("{}", message);
+    exit(exit_code);
 }
 
 fn internal(args: Vec<String>) -> Result<(), Error> {

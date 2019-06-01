@@ -1,1 +1,1 @@
-ACTION=="add", SUBSYSTEM=="usb", DRIVERS=="usb", RUN+="/usr/bin/carusbam $attr{busnum} $attr{devnum}"
+ACTION=="add", SUBSYSTEM=="usb", DRIVERS=="usb", MODE="0666", RUN+="/usr/bin/carusbam $attr{busnum} $attr{devnum}"

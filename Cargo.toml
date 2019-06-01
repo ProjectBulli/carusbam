@@ -20,8 +20,9 @@ depends = "udev"
 extended-description = """\
 car aa
 """
+
 assets = [
-    ["target/x86_64-unknown-linux-musl/release/carusbam", "usr/bin/carusbam", "755"],
-    ["udev.rules", "/lib/udev/rules.d/99-carusbam.rules", "644"],
+    ["target/x86_64-unknown-linux-gnu/release/carusbam", "usr/bin/carusbam", "755"],
+    ["udev.rules", "lib/udev/rules.d/99-carusbam.rules", "644"],
     ["README.md", "usr/share/doc/carusbam/README.md", "755"]
 ]
