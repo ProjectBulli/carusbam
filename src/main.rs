@@ -1,8 +1,7 @@
-extern crate libusb;
 
 use std::time::Duration;
-use libusb::{Context, Device, Direction, Recipient, request_type, RequestType};
-use libusb::Error as USBError;
+use rusb::{Device, Direction, Recipient, request_type, RequestType, GlobalContext, DeviceList};
+use rusb::Error as USBError;
 use std::env;
 use std::num::ParseIntError;
 use std::process::exit;
@@ -72,8 +71,7 @@ fn internal(args: Vec<String>) -> Result<(), Error> {
     }
     let bus_number = &args[1].parse::<u8>().map_err(Error::Parse)?;
     let device_number = &args[2].parse::<u8>().map_err(Error::Parse)?;
-    let context = Context::new().map_err(Error::USB)?;
-    for device in context.devices().map_err(Error::USB)?.iter() {
+    for device in DeviceList::new().map_err(Error::USB)?.iter() {
         let bus = device.bus_number();
         let address = device.address();
         if bus == *bus_number && *device_number == address {
@@ -90,7 +88,7 @@ fn internal(args: Vec<String>) -> Result<(), Error> {
     Ok(())
 }
 
-fn probe_device(device: Device) -> Result<u16, Error> {
+fn probe_device(device: Device<GlobalContext>) -> Result<u16, Error> {
     let handle = device.open().map_err( Error::USB)?;
     let mut buffer: [u8; 2] = [0, 2];
     let read_request = request_type(Direction::In, RequestType::Vendor, Recipient::Device);
