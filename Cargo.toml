@@ -10,7 +10,8 @@ description = "Car USB Accessory Mode"
 libusb = "0.3.0"
 
 [profile.release]
-lto = true
+lto = "fat"
+codegen-units = 1
 panic = 'abort'
 debug = false
 debug-assertions = false
@@ -21,7 +22,7 @@ extended-description = """\
 car aa
 """
 assets = [
-    ["target/x86_64-unknown-linux-gnu/release/carusbam", "usr/bin/carusbam", "755"],
+    ["target/x86_64-unknown-linux-gnu/release/carusbam", "usr/bin/", "755"],
     ["udev.rules", "lib/udev/rules.d/99-carusbam.rules", "644"],
-    ["README.md", "usr/share/doc/carusbam/README.md", "755"]
+    ["README.md", "usr/share/doc/carusbam/", "755"]
 ]
