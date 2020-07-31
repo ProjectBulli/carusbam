@@ -7,7 +7,7 @@ readme = "README.md"
 description = "Car USB Accessory Mode"
 
 [dependencies]
-rusb = "0.5"
+rusb = "0.6.2"
 
 [profile.release]
 lto = "fat"
