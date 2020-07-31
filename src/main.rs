@@ -8,6 +8,7 @@ use rusb::{Device, DeviceList, Direction, GlobalContext, Recipient, request_type
 const GET_PROTOCOL: u8 = 51;
 const SEND_STRING: u8 = 52;
 const REQUEST_START: u8 = 53;
+const TIMEOUT: Duration = Duration::from_secs(1);
 
 #[derive(Debug)]
 enum Error {
@@ -115,16 +116,15 @@ fn probe_device(device: Device<GlobalContext>) -> Result<u16, Error> {
     let mut buffer: [u8; 2] = [0, 2];
     let read_request = request_type(Direction::In, RequestType::Vendor, Recipient::Device);
     let write_request = request_type(Direction::Out, RequestType::Vendor, Recipient::Device);
-    let timeout = Duration::from_secs(1);
 
-    handle.read_control(read_request, GET_PROTOCOL, 0, 0, &mut buffer, timeout).map_err(Error::USB)?;
+    handle.read_control(read_request, GET_PROTOCOL, 0, 0, &mut buffer, TIMEOUT).map_err(Error::USB)?;
     let version = buffer.as_version();
     if version < 1 {
         return Err(Error::UnsupportedVersion(version));
     }
-    handle.write_control(write_request, SEND_STRING, 0, 0, "Android".as_ref(), timeout).map_err(Error::USB)?;
-    handle.write_control(write_request, SEND_STRING, 0, 1, "Android Auto".as_ref(), timeout).map_err(Error::USB)?;
-    handle.write_control(write_request, REQUEST_START, 0, 0, &mut [], timeout).map_err(Error::USB)?;
+    handle.write_control(write_request, SEND_STRING, 0, 0, "Android".as_ref(), TIMEOUT).map_err(Error::USB)?;
+    handle.write_control(write_request, SEND_STRING, 0, 1, "Android Auto".as_ref(), TIMEOUT).map_err(Error::USB)?;
+    handle.write_control(write_request, REQUEST_START, 0, 0, &mut [], TIMEOUT).map_err(Error::USB)?;
     Ok(version)
 }
 
