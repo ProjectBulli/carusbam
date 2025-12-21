@@ -2,12 +2,12 @@
 name = "carusbam"
 version = "0.1.0"
 authors = ["nexos"]
-edition = "2021"
+edition = "2024"
 readme = "README.md"
 description = "Car USB Accessory Mode"
 
 [dependencies]
-rusb = "0.6.2"
+rusb = "0.9.4"
 
 [profile.release]
 lto = "fat"
