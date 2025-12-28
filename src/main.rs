@@ -99,6 +99,7 @@ fn internal(args: Vec<String>) -> Result<(), Error> {
         let address = device.address();
         if bus == *bus_number && *device_number == address {
             match probe_device(device) {
+
                 Ok(version) => {
                     println!("   ok {}:{} version {}", bus, address, version)
                 }
