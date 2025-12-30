@@ -8,6 +8,8 @@ description = "Car USB Accessory Mode"
 
 [dependencies]
 rusb = "0.9.4"
+log = { version = "0.4.29", features = ["std", "kv"] }
+journal = { git = "https://github.com/nexoscp/systemd.rs.git"} # , path = "../systemd.rs/journal"
 
 [profile.release]
 lto = true
