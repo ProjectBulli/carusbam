@@ -138,7 +138,7 @@ impl Termination for Error { //FIXME
                     rusb::Error::BadDescriptor => ExitCode::from(14),
                 }
             },
-            Error::Parse(e) => ExitCode::from(20),
+            Error::Parse(_) => ExitCode::from(20),
             Error::Args(_) => ExitCode::from(30),
             Error::UnsupportedVersion(_) => ExitCode::from(40),
             Error::Journal(_) => ExitCode::from(50),
