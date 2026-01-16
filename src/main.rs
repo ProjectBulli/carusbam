@@ -1,8 +1,10 @@
 use journal::{Journal, JournalError};
 use log::{info, LevelFilter};
-use rusb::{devices, request_type, Device, Direction, Recipient, RequestType, UsbContext};
+use nusb::transfer::{ControlIn, ControlOut, ControlType, Recipient, TransferError};
+use nusb::{list_devices, Device, DeviceInfo, MaybeFuture};
 use std::env;
 use std::env::Args;
+use std::ffi::CStr;
 use std::fmt::{Debug, Display, Formatter};
 use std::num::ParseIntError;
 use std::process::{ExitCode, Termination};
@@ -14,63 +16,109 @@ const SEND_STRING: u8 = 52;
 const REQUEST_START: u8 = 53;
 const TIMEOUT: Duration = Duration::from_secs(1);
 
-const READ_REQUEST:u8 = request_type(Direction::In, RequestType::Vendor, Recipient::Device);
-const WRITE_REQUEST:u8 = request_type(Direction::Out, RequestType::Vendor, Recipient::Device);
-
 fn main() -> Result<(), Error> {
     Journal::init(Info)?;
-    info!("ProjectBulli \"Android Auto USB Accessory Mode\" is starting");
+    info!("ProjectBulli Android Auto USB Accessory Mode trigger is starting (nusb edition)");
     let args: Vec<String> = env::args().collect();
     if args.len() <= 2 {
         return Err(Error::Args(args));
     }
     let bus_number = args[1].parse::<u8>()?;
     let device_number = args[2].parse::<u8>()?;
-    for device in devices()?.iter()
-        .filter(|device| {device.bus_number() == bus_number && device.address() == device_number}) {
-        let bus = device.bus_number();
-        let address = device.address();
-            match probe_device(device) {
+    list_devices().wait()?.filter(|device| {device.device_address() == device_number && device.busnum() == bus_number}).for_each(|device| {
+            match probe_device(&device) {
                 Ok(version) => {
-                    info!("   ok {}:{} version {}", bus, address, version)
+                    info!("   ok {}:{} version {}", device.bus_id(), device.device_address(), version)
                 }
                 Err(e) => {
-                    info!("error {}:{} {:?}", bus, address, e)
+                    info!("error {}:{} {:?}",  device.bus_id(), device.device_address(), e)
                 }
         }
-    }
+    } );
     Ok(())
 }
 
-fn probe_device<T: UsbContext>(device: Device<T>) -> Result<u16, Error> {
-    let handle = device.open()?;
-    let mut buffer: [u8; 2] = [0, 2];
+fn probe_device(device: &DeviceInfo) -> Result<u16, Error> {
+    let handle = device.open().wait()?;
+    let buffer: [u8; 2] = [0, 2];
 
-    handle.read_control(READ_REQUEST, GET_PROTOCOL, 0, 0, &mut buffer, TIMEOUT)?;
-    let version = as_version(buffer);
+  let b = get_protocol(&handle, TIMEOUT).wait()?;
+    let version = as_version(b);
     if version < 1 {
         return Err(Error::UnsupportedVersion(version));
     }
-    handle.write_control(WRITE_REQUEST, SEND_STRING, 0, 0, "Android".as_ref(), TIMEOUT)?;
-    handle.write_control(WRITE_REQUEST, SEND_STRING, 0, 1, "Android Auto".as_ref(), TIMEOUT)?;
-    handle.write_control(WRITE_REQUEST, REQUEST_START, 0, 0, &mut [], TIMEOUT)?;
+    send_string(&handle, 0, c"Android", TIMEOUT).wait()?;
+    send_string(&handle, 1, c"Android Auto", TIMEOUT).wait()?;
+    send_start(&handle,  TIMEOUT).wait()?;
     Ok(version)
 }
 
-fn as_version(data: [u8; 2]) -> u16 {
+fn send_string(
+    device:&Device,
+    index: u16,
+    str: &CStr,
+    timeout: Duration,
+) -> impl MaybeFuture<Output = Result<(), TransferError>> {
+    let data = str.to_bytes_with_nul();
+    device.control_out(
+            ControlOut {
+                control_type: ControlType::Vendor,
+                recipient: Recipient::Device,
+                request: SEND_STRING,
+                index,
+                value: 0,
+                data,
+            },
+            timeout,
+        )
+}
+
+fn send_start(device:&Device, timeout: Duration) -> impl MaybeFuture<Output = Result<(), TransferError>> {
+    device.control_out(
+        ControlOut {
+            control_type: ControlType::Vendor,
+            recipient: Recipient::Device,
+            request: REQUEST_START,
+            index: 0,
+            value: 0,
+            data: &[],
+        },
+        timeout,
+    )
+}
+fn get_protocol(device:&Device, timeout: Duration) -> impl MaybeFuture<Output = Result<Vec<u8>, TransferError>> {
+     device .control_in(
+            ControlIn {
+                control_type: ControlType::Vendor,
+                recipient: Recipient::Device,
+                request: GET_PROTOCOL,
+                value: 0,
+                index: 0,
+                length: size_of::<u16>() as u16,
+            },
+            timeout,
+        )
+}
+fn as_version(data: Vec<u8>) -> u16 {
     u16::from(data[1]) << 8 | u16::from(data[0])
 }
 
 enum Error {
-    USB(rusb::Error),
+    TransferError(TransferError),
+    USB(nusb::Error),
     Parse(ParseIntError),
     Args(Vec<String>),
     UnsupportedVersion(u16),
     Journal(JournalError),
 }
 
-impl From<rusb::Error> for Error {
-    fn from(value: rusb::Error) -> Self {
+impl From<TransferError> for Error {
+    fn from(value: TransferError) -> Self {
+        Error::TransferError(value)
+            }
+}
+impl From<nusb::Error> for Error {
+    fn from(value: nusb::Error) -> Self {
         Error::USB(value)
     }
 }
@@ -101,6 +149,7 @@ impl Debug for Error {
             Error::Args(args) => { write!(f, "trouble with arguments, need two arguments: bus-number and device-number but got '{:?}'", args) }
             Error::UnsupportedVersion(u) => { write!(f, "Unsupported android auto version found '{}'", u) }
             Error::Journal(j) => { write!(f, "Journal Error: {:?}", j) }
+            Error::TransferError(e) => { write!(f, "Transfer Error: {:?}", e) }
         }
     }
 }
@@ -120,28 +169,12 @@ impl std::error::Error for Error {
 impl Termination for Error { //FIXME
     fn report(self) -> ExitCode {
         match self {
-            Error::USB(e) => {
-                match e {
-                    rusb::Error::Io            => ExitCode::from(01),
-                    rusb::Error::InvalidParam  => ExitCode::from(02),
-                    rusb::Error::Access        => ExitCode::from(03),
-                    rusb::Error::NoDevice      => ExitCode::from(04),
-                    rusb::Error::NotFound      => ExitCode::from(05),
-                    rusb::Error::Busy          => ExitCode::from(06),
-                    rusb::Error::Timeout       => ExitCode::from(07),
-                    rusb::Error::Overflow      => ExitCode::from(08),
-                    rusb::Error::Pipe          => ExitCode::from(09),
-                    rusb::Error::Interrupted   => ExitCode::from(10),
-                    rusb::Error::NoMem         => ExitCode::from(11),
-                    rusb::Error::NotSupported  => ExitCode::from(12),
-                    rusb::Error::Other         => ExitCode::from(13),
-                    rusb::Error::BadDescriptor => ExitCode::from(14),
-                }
-            },
+            Error::USB(e) => ExitCode::from(01), //TODO mor details from usb error
             Error::Parse(_) => ExitCode::from(20),
             Error::Args(_) => ExitCode::from(30),
             Error::UnsupportedVersion(_) => ExitCode::from(40),
             Error::Journal(_) => ExitCode::from(50),
+            Error::TransferError(_) => ExitCode::from(60),
         }
     }
 }
